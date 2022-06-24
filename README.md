@@ -6,6 +6,73 @@
 
 ## 【此项目基于 Cocos Creator 2.4.9，理论上支持所有 2.4.x 版本】
 
+## 需定制引擎以支持子游戏脚本热加载
+- 方法一（定制js引擎从2.4.9版本迁移出只保证2.4.9版本正常使用）
+	- 打开编辑器
+	- 项目->项目设置->自定义引擎
+	- 去掉使用内置的JavaScript引擎勾选
+	- 选择项目中的customEngine
+	- 重启编辑器
+- 方法二（建议使用）:
+	- 点击编辑器右上角`编辑器按钮`，或者直接找到引擎安装路径
+	- 找到构建缓存`引擎版本/resources/engine/bin/.cache`，删除对应平台构建缓存
+	- 找到文件`引擎版本/resources/engine/cocos2d/core/platform/js.js`
+	- 找到`function setup`方法替换如下
+
+```
+function setup (key, publicName, table) {
+        js.getset(js, publicName,
+            function () {
+                return Object.assign({}, table);
+            },
+            function (value) {
+                js.clear(table);
+                Object.assign(table, value);
+            }
+        );
+        return function (id, constructor) {
+            // deregister old
+            if (constructor.prototype.hasOwnProperty(key)) {
+                delete table[constructor.prototype[key]];
+            }
+            js.value(constructor.prototype, key, id);
+            // register class
+            if (id) {
+                var registered = table[id];
+// ---------------------------- 旧逻辑 start ----------------------------
+//                 if (registered && registered !== constructor) {
+//                     var error = 'A Class already exists with the same ' + key + ' : "' + id + '".';
+//                     if (CC_TEST) {
+//                         error += ' (This may be caused by error of unit test.) \
+// If you dont need serialization, you can set class id to "". You can also call \
+// cc.js.unregisterClass to remove the id of unused class';
+//                     }
+//                     cc.error(error);
+//                 }
+//                 else {
+//                     table[id] = constructor;
+//                 }
+// ---------------------------- 旧逻辑 end ----------------------------
+// ---------------------------- 新逻辑 start ----------------------------
+                if (registered && registered !== constructor) {
+                    if (key == "__classname__") {
+                        delete _nameToClass[id];
+                    } else if (key == "__cid__") {
+                        delete _idToClass[id];
+                    }
+                    // console.log(`---- cc.js.setup ---- delete ${key} : ${id}`);
+                }
+                table[id] = constructor;
+// ---------------------------- 新逻辑 end ----------------------------
+                //if (id === "") {
+                //    console.trace("", table === _nameToClass);
+                //}
+            }
+        };
+    }
+```
+![enginejs.png](https://download.cocos.com/Cocos/CocosStore/markdown/2022/06/e3eeaa07a342daa1daa6f8ae73f7c71d98462.png)
+
 # 亮点介绍
 
 1. 大厅、子游戏分离，子游戏分包下载
@@ -85,7 +152,7 @@
 
 1. 构建项目【项目->构建发布->构建】
 
-1. 删除构建目录下`[项目目录]\build\jsb-link\assets`，`不在包内`的子游戏文件夹。或者点击热更插件中的`生成热更包按钮`会自动删除不在包内的子游戏文件夹
+1. 点击热更插件中的`生成热更包按钮`会自动删除不在包内的子游戏文件夹，以及对config、index进行版本标识
 
 1. 编译
 
