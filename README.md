@@ -239,3 +239,7 @@ function setup (key, publicName, table) {
 1. 添加游戏务必配置为 bundle
 
 1. bundle 间尽量避免相互引用，公共资源放在主包中
+
+# 微信群码
+
+![](./static/微信群二维码.jpg)
